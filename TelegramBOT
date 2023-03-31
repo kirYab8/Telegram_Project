@@ -1,0 +1,154 @@
+import telebot
+from telebot import types
+from translate import Translator
+from random import choice
+import time
+
+
+bot = telebot.TeleBot('6216688445:AAFcm8EOmPO-N9bzAQGVYKsONoW6SitBzB8')
+
+markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
+start_button = types.KeyboardButton('/start')
+translate_button = types.KeyboardButton('/translate')
+music_video_button = types.KeyboardButton('/music_video')
+video_button = types.KeyboardButton('/video')
+games_button = types.KeyboardButton('/games')
+markup.add(start_button, translate_button, music_video_button, video_button, games_button)
+
+
+# Ну, собственно, старт
+@bot.message_handler(commands=['start'])
+def start(message):
+    global markup
+    mess = f'Привет, <b>{message.from_user.username}</b>'
+    bot.send_message(message.chat.id, mess, parse_mode='html', reply_markup=markup)
+
+
+# Скидывается за деньги да
+@bot.message_handler(commands=['music_video'])
+def music_video(message):
+    bot.send_message(message.chat.id, 'https://www.youtube.com/watch?v=rn-fGxWlnhM')
+
+
+# Встроенный переводчик
+@bot.message_handler(commands=['translate'])
+def translate(message):
+    back_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    back_button = types.KeyboardButton('/back')
+    back_markup.add(back_button)
+    sent = bot.send_message(message.chat.id, 'Что перевести?', reply_markup=back_markup)
+
+    bot.register_next_step_handler(sent, translate_the_words)
+
+
+def translate_the_words(message):
+    global markup
+    translator = Translator(to_lang="Russian")
+    sent = translator.translate(message.text)
+    if message.text != '/back' and message.text != '/start':
+        bot.send_message(message.chat.id, sent)
+    else:
+        bot.send_message(message.chat.id, 'Ты вернулся на старт.', reply_markup=markup)
+
+
+# Дальше идут игры и кнопки для них
+@bot.message_handler(commands=['games'])
+def games(message):
+    sent = bot.send_message(message.chat.id, 'Давайте поиграем')
+    bot.register_next_step_handler(sent, choose_a_mode)
+
+
+def choose_a_mode(message):
+    games_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
+    dice_button = types.KeyboardButton('Dice 🎲')
+    darts_button = types.KeyboardButton('Darts 🎯')
+    casino_button = types.KeyboardButton('Casino 🎰')
+    back_button = types.KeyboardButton('/back')
+    games_markup.add(dice_button, darts_button, casino_button, back_button)
+    sent = bot.send_message(message.chat.id, 'Выберите режим', reply_markup=games_markup)
+    if message.text != '/back' or message.text != '/start':
+        if message.text == 'Dice 🎲':
+            bot.register_next_step_handler(sent, dice)
+        elif message.text == 'Darts 🎯':
+            bot.register_next_step_handler(sent, darts)
+        elif message.text == 'Casino 🎰':
+            bot.register_next_step_handler(sent, casino)
+    else:
+        bot.send_message(message.chat.id, 'Ты вернулся на старт.', reply_markup=markup)
+
+
+def dice(message):
+    global markup
+    sent = bot.send_dice(message.chat.id)
+    if sent.dice.value <= 3:
+        time.sleep(3.8)
+        bot.send_message(message.chat.id, f'Выпало {sent.dice.value}...', reply_markup=markup)
+    elif 6 > sent.dice.value > 3:
+        time.sleep(3.8)
+        bot.send_message(message.chat.id, f'Кубик остановился на {sent.dice.value}. Неплохо.', reply_markup=markup)
+    elif sent.dice.value == 6:
+        time.sleep(3.8)
+        bot.send_message(message.chat.id, 'Это победа!', reply_markup=markup)
+
+
+def casino(message):
+    global markup
+    sent = bot.send_dice(message.chat.id, '🎰')
+    if sent.dice.value == 1:
+        time.sleep(2.6)
+        bot.reply_to(message, 'bar', reply_markup=markup)
+    elif sent.dice.value == 22:
+        time.sleep(2.6)
+        bot.reply_to(message, 'grape', reply_markup=markup)
+    elif sent.dice.value == 43:
+        time.sleep(2.6)
+        bot.reply_to(message, 'lemons', reply_markup=markup)
+    elif sent.dice.value == 64:
+        time.sleep(2.6)
+        bot.reply_to(message, 'AZINO!', reply_markup=markup)
+
+
+def darts(message):
+    global markup
+    sent = bot.send_dice(message.chat.id, '🎯')
+    if sent.dice.value <= 3:
+        time.sleep(2.8)
+        bot.send_message(message.chat.id, f'У вас {sent.dice.value}...', reply_markup=markup)
+    elif 6 > sent.dice.value > 3:
+        time.sleep(2.8)
+        bot.send_message(message.chat.id, f'Вы попали в {sent.dice.value}. Неплохо.', reply_markup=markup)
+    elif sent.dice.value == 6:
+        time.sleep(2.8)
+        bot.send_message(message.chat.id, 'Это победа!', reply_markup=markup)
+
+
+# Скидывается обучалка
+@bot.message_handler(commands=['video'])
+def video(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton('Видос', url='https://www.youtube.com/watch?v=HodO2eBEz_8'))
+    bot.send_message(message.chat.id, 'TeleBot for Python', reply_markup=markup)
+
+
+# Отвечает на фотку
+@bot.message_handler(content_types=['photo'])
+def get_photo(message):
+    bot.send_message(message.chat.id, 'Топ фотка')
+
+
+# Любой посторонний текст
+@bot.message_handler(content_types=['text'])
+def other_text(message):
+    photo1, photo2, photo3 = open('data/leto1.jpg', 'rb'), open('data/leto2.jpg', 'rb'), open('data/leto3.jpg', 'rb')
+    lst_photos = [photo1, photo2, photo3]
+    lst_words = ['Я хз че тебе надо', 'Не понимаю', 'Я вас слушаю', 'Жопа', 'Ты че от меня хочешь? Пиши /start']
+    if message.text.lower() == 'привет':
+        bot.send_message(message.chat.id, 'Ну здорова', parse_mode='html')
+    elif message.text.lower() == 'id':
+        bot.send_message(message.chat.id, f'Твой ID: {message.from_user.id}', parse_mode='html')
+    else:
+        bot.send_message(message.chat.id, choice(lst_words), parse_mode='html')
+        # bot.send_photo(message.chat.id, choice(lst_photos))
+
+
+bot.polling(none_stop=True)
